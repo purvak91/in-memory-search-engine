@@ -12,13 +12,42 @@ class TokenizerTest {
 
     @Test
     void shouldReturnCleanTokensForStandardSentence() {
-        String input = "The 2 Quick brown foxes!";
+        String input = "The quick brown fox jumps over the lazy dog";
         List<String> tokens = tokenizer.tokenize(input);
 
-        assertEquals(3, tokens.size(), "Should have exactly 3 tokens");
-        assertTrue(tokens.contains("quick"));
-        assertTrue(tokens.contains("brown"));
-        assertTrue(tokens.contains("foxes"));
+        assertEquals(List.of("quick", "brown", "fox", "jump", "over", "lazy", "dog"), tokens);
+    }
+
+    @Test
+    void shouldReturnSingleDigitTokens() {
+        String input = "Java 8 is better than Java 7 in 2024";
+        List<String> tokens = tokenizer.tokenize(input);
+
+        assertEquals(List.of("java", "8", "better", "java", "7", "2024"), tokens);
+    }
+
+    @Test
+    void shouldHandleProgrammingLanguageTokens() {
+        String input = "C#, C++ and Node.js are popular programming languages";
+        List<String> tokens = tokenizer.tokenize(input);
+
+        assertEquals(List.of("c#", "c++", "node.js", "popular", "program", "languag"), tokens);
+    }
+
+    @Test
+    void shouldHandleHyphenatedWords() {
+        String input = "State-of-the-art technology is evolving rapidly";
+        List<String> tokens = tokenizer.tokenize(input);
+
+        assertEquals(List.of("state", "art", "technology", "evolv", "rapidly"), tokens);
+    }
+
+    @Test
+    void shouldReturnStemmedTokens() {
+        String input = "Stories Running Boxes Cats and runs";
+        List<String> tokens = tokenizer.tokenize(input);
+
+        assertEquals(List.of("story", "run", "box", "cat", "run"), tokens);
     }
 
     @Test
@@ -33,5 +62,6 @@ class TokenizerTest {
         List<String> tokens = tokenizer.tokenize(input);
 
         assertTrue(tokens.isEmpty(), "Should be empty as all words are noise");
+        assertEquals(List.of(), tokens);
     }
 }
