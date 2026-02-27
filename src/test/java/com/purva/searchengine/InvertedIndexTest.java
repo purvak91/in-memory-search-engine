@@ -4,8 +4,7 @@ import com.purva.searchengine.index.InvertedIndex;
 import com.purva.searchengine.index.Posting;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -103,7 +102,29 @@ class InvertedIndexTest {
 
         invertedIndex.index(1, List.of("immutable", "postings"));
         Collection<Posting> postings = invertedIndex.getPostings("immutable");
+        Posting newPosting = new Posting(2, 1);
 
-        assertThrows(UnsupportedOperationException.class, () -> postings.add(new Posting(2, 1)));
+        try {
+            postings.add(newPosting);
+            fail("Expected UnsupportedOperationException to be thrown");
+        } catch (UnsupportedOperationException e) {
+            // Expected exception, do nothing
+        }
+    }
+
+    @Test
+    void testUnmodifiablePostingsMap() {
+        InvertedIndex invertedIndex = new InvertedIndex();
+
+        invertedIndex.index(1, List.of("immutable", "postings"));
+        var postingsMap = invertedIndex.getPostingsMap("immutable");
+        Posting newPosting = new Posting(2, 1);
+
+        try {
+            postingsMap.put(2, newPosting);
+            fail("Expected UnsupportedOperationException to be thrown");
+        } catch (UnsupportedOperationException e) {
+            // Expected exception, do nothing
+        }
     }
 }

@@ -80,6 +80,31 @@ The use of `AtomicInteger` for `totalDocuments` ensures that the document count 
 
 ---
 
+## Phase 2C Extensions: Concurrency & Thread Safety
+
+In this phase, the `InvertedIndex` was upgraded from a single-threaded data structure to a thread-safe component capable of handling high-traffic search environments.
+
+### 1. Read-Write Optimization
+
+We implemented a `ReentrantReadWriteLock` to optimize for search-heavy workloads. This strategy maximizes throughput by allowing multiple "readers" to work simultaneously while still protecting "writers."
+
+* **Read Lock:** Acquired during `getPostings()` and `getDocumentFrequency()`. Multiple users can search and retrieve statistics at the same time without contention.
+* **Write Lock:** Acquired during the `index()` method. This ensures that while a document is being added, no other thread can read or modify the index, preventing data corruption.
+* **Lock-Free Reads:** The `getTotalDocuments()` method is intentionally **lock-free**. Because `totalDocuments` is stored as an `AtomicInteger`, it provides thread-safe access to the global count without the overhead of the ReadWriteLock.
+
+### 2. Ensuring Atomic Updates
+
+A single call to `index()` updates three distinct internal structures: the postings map, the document length map, and the global document counter. Without proper locking, a reader could see a "partial" update—for example, finding a document in the search results before its length has been recorded. The `writeLock` makes these multi-step updates **atomic**, ensuring the index is always in a consistent state.
+
+### 3. Verification via Stress Testing
+
+Thread safety was verified through a dedicated test suite (`InvertedIndexConcurrencyTest`) using the following patterns:
+
+* **The Starting Pistol (Contention):** Using `CountDownLatch` to force 10+ threads to "rush" the write lock at the exact same millisecond.
+* **Read/Write Consistency:** Simultaneous reader and writer threads verify that the document frequency always matches the actual number of postings, even during heavy update bursts.
+* **Resource Management:** Ensuring that the `ExecutorService` is properly shut down in `finally` blocks to prevent thread leaks during testing.
+
+---
+
 ## 7. Future Improvements
 * **Positional Indexing:** Adding an `ArrayList<Integer>` to the `Posting` record to store word positions for phrase matching.
-* **Concurrency:** Transitioning to `ConcurrentHashMap` to support thread-safe, simultaneous indexing.
