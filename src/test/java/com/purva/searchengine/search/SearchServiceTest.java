@@ -1,4 +1,4 @@
-package com.purva.searchengine;
+package com.purva.searchengine.search;
 
 import com.purva.searchengine.index.InvertedIndex;
 import com.purva.searchengine.service.SearchService;
@@ -15,6 +15,7 @@ class SearchServiceTest {
     void shouldReturnCorrectSearchResults() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("java programming language");
         invertedIndex.index(1, tokens);
@@ -25,7 +26,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("java python programming");
         invertedIndex.index(3, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("java programming language");
         assertEquals(List.of(1), results);
@@ -45,6 +46,7 @@ class SearchServiceTest {
     void shouldHandleSearchWithStopWords() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("the quick brown fox");
         invertedIndex.index(1, tokens);
@@ -52,7 +54,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("the lazy dog");
         invertedIndex.index(2, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("the quick");
         assertEquals(List.of(1), results);
@@ -68,6 +70,7 @@ class SearchServiceTest {
     void shouldHandleSearchWithSingleLetterTokens() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("a quick brown fox");
         invertedIndex.index(1, tokens);
@@ -75,7 +78,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("the lazy dog");
         invertedIndex.index(2, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("a quick");
         assertEquals(List.of(1), results);
@@ -91,6 +94,7 @@ class SearchServiceTest {
     void shouldHandleCaseInsensitiveSearch() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("java programming language");
         invertedIndex.index(1, tokens);
@@ -98,7 +102,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("python programming language");
         invertedIndex.index(2, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("java programming language");
         assertEquals(List.of(1), results);
@@ -114,6 +118,7 @@ class SearchServiceTest {
     void shouldReturnEmptyResultsForNonExistentTokens() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("java programming language");
         invertedIndex.index(1, tokens);
@@ -121,7 +126,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("python programming language");
         invertedIndex.index(2, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("ruby programming");
         assertTrue(results.isEmpty());
@@ -134,7 +139,8 @@ class SearchServiceTest {
     void shouldReturnEmptyResultsForEmptyOrNullQuery() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var scorer = new Bm25Scorer(invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("");
         assertTrue(results.isEmpty());
@@ -147,6 +153,7 @@ class SearchServiceTest {
     void shouldReturnEmptyResultsWhenNoDocumentsMatchAllTokens() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("java programming");
         invertedIndex.index(1, tokens);
@@ -157,7 +164,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("java python");
         invertedIndex.index(3, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("java programming language");
         assertTrue(results.isEmpty(), "Should be empty as no document contains all tokens");
@@ -167,6 +174,7 @@ class SearchServiceTest {
     void shouldReturnSortedResults() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
+        var scorer = new Bm25Scorer(invertedIndex);
 
         var tokens = tokenizer.tokenize("java programming");
         invertedIndex.index(3, tokens);
@@ -177,7 +185,7 @@ class SearchServiceTest {
         tokens = tokenizer.tokenize("java programming");
         invertedIndex.index(2, tokens);
 
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var results = searchService.search("java programming");
         assertEquals(List.of(1, 2, 3), results, "Results should be sorted by document ID");

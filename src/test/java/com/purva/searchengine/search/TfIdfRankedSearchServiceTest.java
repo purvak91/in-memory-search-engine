@@ -1,4 +1,4 @@
-package com.purva.searchengine;
+package com.purva.searchengine.search;
 
 import com.purva.searchengine.index.InvertedIndex;
 import com.purva.searchengine.service.SearchResult;
@@ -12,7 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class RankedSearchServiceTest {
+class TfIdfRankedSearchServiceTest {
     private SearchService searchService;
 
     String doc1 = "java is a programming language used word widely. java is platform independent and java is object oriented programming language. java is used for developing web applications, mobile applications, and enterprise software. java is a popular programming language for beginners and experienced developers alike.";
@@ -23,8 +23,8 @@ class RankedSearchServiceTest {
     void setup() {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
-
-        searchService = new SearchService(tokenizer, invertedIndex);
+        var scorer = new TfIdfScorer(invertedIndex);
+        searchService = new SearchService(tokenizer, invertedIndex, scorer);
 
         var tokens = tokenizer.tokenize(doc1);
         invertedIndex.index(1, tokens);

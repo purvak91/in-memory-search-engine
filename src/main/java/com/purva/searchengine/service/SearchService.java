@@ -2,6 +2,7 @@ package com.purva.searchengine.service;
 
 import com.purva.searchengine.index.InvertedIndex;
 import com.purva.searchengine.index.Posting;
+import com.purva.searchengine.search.Scorer;
 import com.purva.searchengine.tokenizer.Tokenizer;
 
 import java.util.*;
@@ -9,12 +10,12 @@ import java.util.*;
 public class SearchService {
     private final Tokenizer tokenizer;
     private final InvertedIndex invertedIndex;
-    private final TfIdfScorer scorer;
+    private final Scorer scorer;
 
-    public SearchService(Tokenizer tokenizer, InvertedIndex invertedIndex) {
+    public SearchService(Tokenizer tokenizer, InvertedIndex invertedIndex, Scorer scorer) {
         this.tokenizer = tokenizer;
         this.invertedIndex = invertedIndex;
-        this.scorer = new TfIdfScorer(invertedIndex);
+        this.scorer = scorer;
     }
 
     public List<Integer> search(String query) {

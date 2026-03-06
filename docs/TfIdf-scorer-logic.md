@@ -27,13 +27,14 @@ $$score(t, d) = \text{TF}(t, d) \times \text{IDF}(t)$$
 ---
 
 ## 4. Complexity Analysis
-| Operation | Complexity | Description |
-| :--- | :--- | :--- |
-| **Score Calculation** | $O(1)$ | Retrieval of pre-calculated frequencies and lengths from the index happens in constant time. |
-| **Memory Footprint** | $O(1)$ | The class only stores a reference to the `InvertedIndex`, adding no significant memory overhead. |
+| Operation             | Complexity | Description                                                                                      |
+|:----------------------|:-----------|:-------------------------------------------------------------------------------------------------|
+| **Score Calculation** | $O(1)$     | Retrieval of pre-calculated frequencies and lengths from the index happens in constant time.     |
+| **Memory Footprint**  | $O(1)$     | The class only stores a reference to the `InvertedIndex`, adding no significant memory overhead. |
 
 ---
 
 ## 5. Future Improvements
-* **BM25 Integration:** Implementing the Okapi BM25 algorithm to better handle term frequency saturation and refine length normalization logic.
+* **BM25 Integration:** Implemented via `Bm25Scorer` using the Strategy Pattern.
+  See `bm25-scorer-design.md` for details.
 * **Field Weighting:** Allowing different weights for matches found in titles versus body text.

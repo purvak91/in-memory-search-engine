@@ -1,6 +1,5 @@
-package com.purva.searchengine;
+package com.purva.searchengine.trie;
 
-import com.purva.searchengine.trie.Trie;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

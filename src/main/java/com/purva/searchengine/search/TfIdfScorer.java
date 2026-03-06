@@ -1,15 +1,16 @@
-package com.purva.searchengine.service;
+package com.purva.searchengine.search;
 
 import com.purva.searchengine.index.InvertedIndex;
 import com.purva.searchengine.index.Posting;
 
-public class TfIdfScorer {
+public class TfIdfScorer implements Scorer {
     private final InvertedIndex invertedIndex;
 
     public TfIdfScorer(InvertedIndex invertedIndex) {
         this.invertedIndex = invertedIndex;
     }
 
+    @Override
     public double score(int docId, String token) {
         Posting posting = invertedIndex.getPostingsMap(token).get(docId);
         if (posting == null) return 0.0;

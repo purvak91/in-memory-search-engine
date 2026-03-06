@@ -2,6 +2,7 @@ package com.purva.searchengine.index;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -9,6 +10,7 @@ public class InvertedIndex {
     private final Map<String, Map<Integer, Posting>> index = new HashMap<>();
     private final Map<Integer, Integer> documentLengths = new HashMap<>();
     private final AtomicInteger totalDocuments = new AtomicInteger(0);
+    private final AtomicLong totalDocumentLength = new AtomicLong(0);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public void index(int docId, List<String> tokens) {
@@ -22,6 +24,10 @@ public class InvertedIndex {
             if (!documentLengths.containsKey(docId)) {
                 totalDocuments.incrementAndGet();
             }
+            if (documentLengths.containsKey(docId)) {
+                totalDocumentLength.addAndGet(-documentLengths.get(docId));
+            }
+            totalDocumentLength.addAndGet(tokens.size());
             documentLengths.put(docId, tokens.size());
 
             Map<String, Integer> termFreqMap = new HashMap<>();
@@ -94,6 +100,18 @@ public class InvertedIndex {
 
         try {
             return index.getOrDefault(token, Map.of()).size();
+        }
+        finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public double getAverageDocumentLength() {
+        lock.readLock().lock();
+
+        try {
+            int totalDocs = totalDocuments.get();
+            return totalDocs == 0 ? 1.0 : (double) totalDocumentLength.get() / totalDocs;
         }
         finally {
             lock.readLock().unlock();

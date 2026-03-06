@@ -1,6 +1,8 @@
-package com.purva.searchengine;
+package com.purva.searchengine.benchmark;
 
 import com.purva.searchengine.index.InvertedIndex;
+import com.purva.searchengine.search.Bm25Scorer;
+import com.purva.searchengine.search.TfIdfScorer;
 import com.purva.searchengine.service.SearchService;
 import com.purva.searchengine.tokenizer.Tokenizer;
 
@@ -14,6 +16,7 @@ import java.util.List;
  * 1. Document Indexing (Write Latency)
  * 2. Boolean AND Search (Read Latency)
  * 3. TF-IDF Ranked Search (Computation Latency)
+ * 4. BM25 Ranked Search (Computation Latency)
  * * Note: To ensure accurate results, run this on a quiet machine with
  * minimal background processes to avoid CPU scheduling noise.
  */
@@ -89,14 +92,14 @@ public class LatencyBenchmark {
         analysis("BOOLEAN SEARCH BENCHMARK", latencies, blackHole);
     }
 
-    private static void warmUpRanked(SearchService searchService) {
-        System.out.println("Warming up Ranked Search...");
+    private static void warmUpRanked(SearchService searchService, String algoLabel) {
+        System.out.println("Warming up " + algoLabel + " Ranked Search...");
         for (int i = 0; i < 10000; i++) {
             searchService.rankedSearch("java", 5);
         }
     }
 
-    private static void measurementRanked(SearchService searchService) {
+    private static void measurementRanked(SearchService searchService, String algoLabel) {
         int numSearches = 10000;
         List<Long> latencies = new ArrayList<>(numSearches);
         long blackHole = 0;
@@ -111,13 +114,16 @@ public class LatencyBenchmark {
             blackHole += results.size();
             latencies.add(endTime - startTime);
         }
-        analysis("RANKED SEARCH BENCHMARK", latencies, blackHole);
+        analysis(algoLabel +" RANKED SEARCH BENCHMARK", latencies, blackHole);
     }
 
     public static void main(String[] args) {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
-        var searchService = new SearchService(tokenizer, invertedIndex);
+        var tfIdfScorerscorer = new TfIdfScorer(invertedIndex);
+        var tfIdfsearchService = new SearchService(tokenizer, invertedIndex, tfIdfScorerscorer);
+        var bm25Scorer = new Bm25Scorer(invertedIndex);
+        var bm25SearchService = new SearchService(tokenizer, invertedIndex, bm25Scorer);
 
         for (int i = 0; i < 5000; i++) {
             invertedIndex.index(i, List.of("java", "search", "engine", "test" + (i % 10)));
@@ -126,10 +132,13 @@ public class LatencyBenchmark {
         warmUpIndex(invertedIndex);
         measurementIndex(invertedIndex);
 
-        warmUpSearch(searchService);
-        measurementSearch(searchService);
+        warmUpSearch(tfIdfsearchService);
+        measurementSearch(tfIdfsearchService);
 
-        warmUpRanked(searchService);
-        measurementRanked(searchService);
+        warmUpRanked(tfIdfsearchService, "TF-IDF");
+        measurementRanked(tfIdfsearchService, "TF-IDF");
+
+        warmUpRanked(bm25SearchService, "BM25");
+        measurementRanked(bm25SearchService, "BM25");
     }
 }

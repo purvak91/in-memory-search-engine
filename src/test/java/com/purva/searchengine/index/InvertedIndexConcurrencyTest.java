@@ -1,7 +1,5 @@
-package com.purva.searchengine;
+package com.purva.searchengine.index;
 
-import com.purva.searchengine.index.InvertedIndex;
-import com.purva.searchengine.index.Posting;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

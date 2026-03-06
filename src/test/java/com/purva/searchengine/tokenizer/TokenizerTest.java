@@ -1,6 +1,5 @@
-package com.purva.searchengine;
+package com.purva.searchengine.tokenizer;
 
-import com.purva.searchengine.tokenizer.Tokenizer;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 

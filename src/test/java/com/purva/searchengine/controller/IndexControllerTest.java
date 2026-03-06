@@ -1,6 +1,5 @@
-package com.purva.searchengine;
+package com.purva.searchengine.controller;
 
-import com.purva.searchengine.controller.IndexController;
 import com.purva.searchengine.service.DocumentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

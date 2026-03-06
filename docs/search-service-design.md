@@ -51,7 +51,7 @@ The `SearchService` has been extended to support **Ranked Search**, transitionin
 
 ### 1. The `rankedSearch` Methodology
 While the standard `search` method returns all matching documents, `rankedSearch` introduces relevance scoring and result limits.
-* **Scoring Integration:** The service utilizes the `TfIdfScorer` to calculate a cumulative score for each document based on all query tokens.
+* **Pluggable Scoring:** The service utilizes the `Scorer` interface, allowing it to switch between `TfIdfScorer` and the advanced `Bm25Scorer` at runtime via the **Strategy Pattern**.
 * **Input Validation:** The method includes defensive checks to ensure `topK` parameters are positive, preventing runtime errors during heap initialization.
 
 ### 2. Top-K Optimization: The Min-Heap Approach

@@ -19,10 +19,9 @@ The system exposes two primary endpoints to interact with the in-memory index.
 * **Parameters**:
     * `query` (Required): The search term.
     * `topK` (Optional): The number of results for ranked search.
-* **Validation**:
-    * Ensures `query` is not empty or whitespace.
-    * Ensures `topK` is greater than 0 if provided.
-* **Logic**: Dynamically switches between standard Boolean search and TF-IDF ranked search based on the presence of the `topK` parameter.
+* **Logic**: Dynamically switches between standard Boolean search (if `topK` is absent) and **Advanced Ranked Search** (if `topK` is present).
+* **Scoring Strategy**: By default, the system utilizes the `Bm25Scorer` for ranking, providing industry-standard relevance through term saturation and length normalization.
+* **Validation**: Ensures `query` is not empty or whitespace and that `topK` is greater than 0 if provided.
 
 ---
 

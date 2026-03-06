@@ -1,6 +1,8 @@
 package com.purva.searchengine.config;
 
 import com.purva.searchengine.index.InvertedIndex;
+import com.purva.searchengine.search.Bm25Scorer;
+import com.purva.searchengine.search.Scorer;
 import com.purva.searchengine.service.DocumentService;
 import com.purva.searchengine.service.SearchService;
 import com.purva.searchengine.tokenizer.Tokenizer;
@@ -20,8 +22,13 @@ public class AppConfig {
     }
 
     @Bean
-    public SearchService searchService(Tokenizer tokenizer, InvertedIndex invertedIndex) {
-        return new SearchService(tokenizer, invertedIndex);
+    public Scorer scorer(InvertedIndex invertedIndex) {
+        return new Bm25Scorer(invertedIndex);
+    }
+
+    @Bean
+    public SearchService searchService(Tokenizer tokenizer, InvertedIndex invertedIndex, Scorer scorer) {
+        return new SearchService(tokenizer, invertedIndex, scorer);
     }
 
     @Bean
