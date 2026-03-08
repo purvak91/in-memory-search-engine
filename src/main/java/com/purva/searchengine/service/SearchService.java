@@ -18,17 +18,19 @@ public class SearchService {
         this.scorer = scorer;
     }
 
-    public List<Integer> search(String query) {
+    public List<Integer> search(String query, double threshold) {
+        validateThreshold(threshold);
         List<String> tokens = tokenizer.tokenize(query);
         if (tokens.isEmpty()) {
             return List.of();
         }
 
-        Set<Integer> candidateDocIds = getCandidateDocIds(tokens);
+        Set<Integer> candidateDocIds = getCandidateDocIds(tokens, threshold);
         return candidateDocIds.stream().sorted().toList();
     }
 
-    public List<SearchResult> rankedSearch(String query, int topK) {
+    public List<SearchResult> rankedSearch(String query, int topK, double threshold) {
+        validateThreshold(threshold);
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be greater than 0");
         }
@@ -38,7 +40,7 @@ public class SearchService {
             return List.of();
         }
 
-        Set<Integer> candidateDocIds = getCandidateDocIds(tokens);
+        Set<Integer> candidateDocIds = getCandidateDocIds(tokens, threshold);
         if (candidateDocIds.isEmpty()) {
             return List.of();
         }
@@ -61,30 +63,30 @@ public class SearchService {
         return results;
     }
 
-    private Set<Integer> getCandidateDocIds(List<String> tokens) {
+    private void validateThreshold(double threshold) {
+        if (threshold <= 0 || threshold > 1) {
+            throw new IllegalArgumentException("Threshold must be in the range (0, 1]");
+        }
+    }
+
+    private Set<Integer> getCandidateDocIds(List<String> tokens, double threshold) {
 
         Set<Integer> candidateDocIds = new HashSet<>();
+        HashMap<Integer, Integer> docIdToTokenCount = new HashMap<>();
 
-        var tokenPostings = invertedIndex.getPostings(tokens.getFirst());
-        for (Posting posting : tokenPostings) {
-            candidateDocIds.add(posting.documentId());
+        // Performing Threshold search: Return documents that contain more than threshold number of tokens
+        for (String token : tokens) {
+            var tokenPostings = invertedIndex.getPostings(token);
+
+            for (Posting posting : tokenPostings) {
+                docIdToTokenCount.merge(posting.documentId(), 1, Integer::sum);
+            }
         }
 
-        // Performing AND search: Only return documents that contain all tokens
-        for (int i = 1; i < tokens.size(); i++) {
-            String token = tokens.get(i);
-            tokenPostings = invertedIndex.getPostings(token);
-            if (tokenPostings.isEmpty()) {
-                return Set.of();
-            }
-
-            Set<Integer> tokenDocIds = new HashSet<>();
-            for (Posting posting : tokenPostings) {
-                tokenDocIds.add(posting.documentId());
-            }
-            candidateDocIds.retainAll(tokenDocIds);
-            if (candidateDocIds.isEmpty()) {
-                break;
+        int thresholdValue = (int) Math.ceil(tokens.size() * threshold);
+        for (Map.Entry<Integer, Integer> entry : docIdToTokenCount.entrySet()) {
+            if (entry.getValue() >= thresholdValue) {
+                candidateDocIds.add(entry.getKey());
             }
         }
 

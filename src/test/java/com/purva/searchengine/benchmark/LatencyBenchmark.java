@@ -14,9 +14,10 @@ import java.util.List;
  * Standalone benchmark suite for measuring the latency of core engine operations.
  * * Measures:
  * 1. Document Indexing (Write Latency)
- * 2. Boolean AND Search (Read Latency)
- * 3. TF-IDF Ranked Search (Computation Latency)
- * 4. BM25 Ranked Search (Computation Latency)
+ * 2. Threshold Search (Read Latency) with threshold = 1.0
+ * 3. Threshold Search (Read Latency) with threshold = 0.75
+ * 4. TF-IDF Ranked Search (Computation Latency) with threshold = 0.75
+ * 5. BM25 Ranked Search (Computation Latency) with threshold = 0.75
  * * Note: To ensure accurate results, run this on a quiet machine with
  * minimal background processes to avoid CPU scheduling noise.
  */
@@ -67,14 +68,14 @@ public class LatencyBenchmark {
         analysis("INDEXING BENCHMARK", latencies, blackHole);
     }
 
-    private static void warmUpSearch(SearchService searchService) {
-        System.out.println("Warming up Boolean Search...");
+    private static void warmUpSearchWithStrictThreshold(SearchService searchService) {
+        System.out.println("Warming up Threshold Search with threshold=1.0...");
         for (int i = 0; i < 10000; i++) {
-            searchService.search("java");
+            searchService.search("java", 1.0);
         }
     }
 
-    private static void measurementSearch(SearchService searchService) {
+    private static void measurementSearchWithStrictThreshold(SearchService searchService) {
         int numSearches = 10000;
         List<Long> latencies = new ArrayList<>(numSearches);
         long blackHole = 0;
@@ -83,19 +84,44 @@ public class LatencyBenchmark {
         for (int i = 0; i < numSearches; i++) {
             String query = queries[i % queries.length];
             long startTime = System.nanoTime();
-            var results = searchService.search(query);
+            var results = searchService.search(query, 1.0);
             long endTime = System.nanoTime();
 
             blackHole += results.size();
             latencies.add(endTime - startTime);
         }
-        analysis("BOOLEAN SEARCH BENCHMARK", latencies, blackHole);
+        analysis("THRESHOLD SEARCH BENCHMARK (threshold=1.0)", latencies, blackHole);
+    }
+
+    private static void warmUpSearchWithRelaxedThreshold(SearchService searchService) {
+        System.out.println("Warming up Threshold Search with threshold=0.75...");
+        for (int i = 0; i < 10000; i++) {
+            searchService.search("java", 0.75);
+        }
+    }
+
+    private static void measurementSearchWithRelaxedThreshold(SearchService searchService) {
+        int numSearches = 10000;
+        List<Long> latencies = new ArrayList<>(numSearches);
+        long blackHole = 0;
+        String[] queries = {"java", "search", "engine", "test5"};
+
+        for (int i = 0; i < numSearches; i++) {
+            String query = queries[i % queries.length];
+            long startTime = System.nanoTime();
+            var results = searchService.search(query, 0.75);
+            long endTime = System.nanoTime();
+
+            blackHole += results.size();
+            latencies.add(endTime - startTime);
+        }
+        analysis("THRESHOLD SEARCH BENCHMARK (threshold=0.75)", latencies, blackHole);
     }
 
     private static void warmUpRanked(SearchService searchService, String algoLabel) {
         System.out.println("Warming up " + algoLabel + " Ranked Search...");
         for (int i = 0; i < 10000; i++) {
-            searchService.rankedSearch("java", 5);
+            searchService.rankedSearch("java", 5, 0.75);
         }
     }
 
@@ -108,7 +134,7 @@ public class LatencyBenchmark {
         for (int i = 0; i < numSearches; i++) {
             String query = queries[i % queries.length];
             long startTime = System.nanoTime();
-            var results = searchService.rankedSearch(query, 10);
+            var results = searchService.rankedSearch(query, 10, 0.75);
             long endTime = System.nanoTime();
 
             blackHole += results.size();
@@ -120,8 +146,8 @@ public class LatencyBenchmark {
     public static void main(String[] args) {
         var tokenizer = new Tokenizer();
         var invertedIndex = new InvertedIndex();
-        var tfIdfScorerscorer = new TfIdfScorer(invertedIndex);
-        var tfIdfsearchService = new SearchService(tokenizer, invertedIndex, tfIdfScorerscorer);
+        var tfIdfScorer = new TfIdfScorer(invertedIndex);
+        var tfIdfsearchService = new SearchService(tokenizer, invertedIndex, tfIdfScorer);
         var bm25Scorer = new Bm25Scorer(invertedIndex);
         var bm25SearchService = new SearchService(tokenizer, invertedIndex, bm25Scorer);
 
@@ -132,8 +158,11 @@ public class LatencyBenchmark {
         warmUpIndex(invertedIndex);
         measurementIndex(invertedIndex);
 
-        warmUpSearch(tfIdfsearchService);
-        measurementSearch(tfIdfsearchService);
+        warmUpSearchWithStrictThreshold(tfIdfsearchService);
+        measurementSearchWithStrictThreshold(tfIdfsearchService);
+
+        warmUpSearchWithRelaxedThreshold(tfIdfsearchService);
+        measurementSearchWithRelaxedThreshold(tfIdfsearchService);
 
         warmUpRanked(tfIdfsearchService, "TF-IDF");
         measurementRanked(tfIdfsearchService, "TF-IDF");

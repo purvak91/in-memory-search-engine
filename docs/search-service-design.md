@@ -1,77 +1,76 @@
 # Search Service Technical Documentation
 
 ## 1. Purpose in System
-The `SearchService` is the orchestration layer of the search engine. It acts as the "brain" that connects disparate components to fulfill a user request.
+The `SearchService` is the orchestration layer of the search engine, acting as the bridge between raw user input and indexed data.
 
 ### Core Functions:
 - **Component Coordination:** Integrates the `Tokenizer` for input cleaning and the `InvertedIndex` for data retrieval.
 - **Query Processing:** Transforms raw user strings into searchable tokens.
-- **Retrieval Logic:** Implements the logic required to find matching documents across multiple terms.
+- **Retrieval Strategy Selection:** Determines which documents qualify as candidates based on dynamic threshold logic.
 
 ---
 
 ## 2. Query Processing Workflow
-When a search is initiated, the service follows a linear execution pipeline:
+When a search is initiated via the **REST API (Phase 3)**, the service follows a linear execution pipeline:
 
-1. **Tokenize Query:** The raw input is passed to the `Tokenizer`, which removes stop-words and normalizes terms.
-2. **Retrieve Postings:** The service fetches the `Collection<Posting>` for each valid token from the `InvertedIndex`.
-3. **Perform AND Intersection:** The service identifies the set of Document IDs that contain **all** requested tokens.
-4. **Return Sorted Results:** The final list of IDs is sorted (currently by Document ID) to provide a consistent, deterministic output.
-
----
-
-## 3. Retrieval Strategy Choice: The "AND" Search
-For the initial implementation, a **Strict Intersection (AND)** strategy was chosen.
-
-- **Precision:** AND search ensures that the results are highly relevant to all terms in the user's query.
-- **Complexity Management:** It provides a simpler logical foundation to verify that the `Tokenizer` and `InvertedIndex` are communicating correctly.
-- **Scalability:** This forms the base "filtering" layer. Ranking and "OR" logic will be layered on top of this verified foundation in the next phase.
+1. **Tokenize Query:** Raw input is normalized and filtered by the `Tokenizer`.
+2. **Candidate Discovery:** The service identifies document IDs that meet the **Threshold** requirement (Phase 4).
+3. **Scoring (Ranked Only):** The active `Scorer` (BM25 or TF-IDF) calculates relevance.
+4. **Top-K Selection:** A Min-Heap prioritizes the best results to ensure $O(D \log K)$ efficiency.
 
 ---
 
-## 4. Algorithm Design
-The service utilizes a **Set-based Intersection** algorithm:
+## 3. Retrieval Strategy Evolution
 
-- **Initial State:** The Document IDs of the first token are loaded into a `Set`.
-- **Iterative Refinement:** For every subsequent token, `Set.retainAll()` is called.
-- **Early Exit Optimization:** If at any point the candidate set becomes empty, the service terminates the loop and returns an empty list immediately, saving unnecessary index lookups.
+### Phase 2: Strict Boolean Intersection (AND)
+The engine initially used a binary "AND" strategy where `Set.retainAll()` required 100% of query tokens to be present. While high-precision, this was too restrictive for complex queries.
 
----
-
-## 5. Complexity Analysis
-- **Tokenization Cost:** $O(L)$ where $L$ is the length of the query string.
-- **Intersection Cost:** $O(Q \times D)$ where $Q$ is the number of query tokens and $D$ is the number of documents in the smallest posting list.
-- **Overall Complexity:** Dominated by the intersection logic, making it highly efficient for sparse indices.
+### Phase 4: Parameterized Threshold Matching (Current)
+Introduced in Phase 4 to improve recall, the engine now utilizes a **Minimum Should Match** model.
+- **Recall Optimization:** Documents are considered candidates if they contain $\ge \text{threshold}$ of the unique query tokens.
+- **Logic:** For a query with $N$ tokens and a threshold $T$, the required match count is $\lceil N \times T \rceil$.
+- **User Control:** The threshold parameter $(0, 1]$ allows users to toggle between strict and fuzzy matching at runtime.
 
 ---
 
-## Phase 2B Extensions: Ranked Retrieval
+## 4. Algorithm Design: Frequency Aggregation
+To support the Phase 4 dynamic threshold, the service transitioned from Set-based intersection to a **Frequency Map** approach:
 
-The `SearchService` has been extended to support **Ranked Search**, transitioning from a strict boolean intersection to a scored and prioritized result set using statistical heuristics.
-
-### 1. The `rankedSearch` Methodology
-While the standard `search` method returns all matching documents, `rankedSearch` introduces relevance scoring and result limits.
-* **Pluggable Scoring:** The service utilizes the `Scorer` interface, allowing it to switch between `TfIdfScorer` and the advanced `Bm25Scorer` at runtime via the **Strategy Pattern**.
-* **Input Validation:** The method includes defensive checks to ensure `topK` parameters are positive, preventing runtime errors during heap initialization.
-
-### 2. Top-K Optimization: The Min-Heap Approach
-To efficiently find the most relevant documents without sorting the entire candidate set, the service implements a **Min-PriorityQueue**.
-* **Efficiency:** By maintaining a heap of size `topK`, the service achieves $O(D \log K)$ complexity (where $D$ is the number of candidate documents), which is significantly faster than sorting the full result set when $D$ is large.
-* **Memory Management:** If the heap exceeds the `topK` size, the lowest-scoring document is polled, ensuring only the most relevant "winners" remain in memory.
-
-### 3. Ranking and Tie-Breaking Logic
-Once the top candidates are identified, they are converted to a list and sorted for final delivery.
-* **Primary Sort:** Documents are ordered by their **TF-IDF score** in descending order.
-* **Secondary Sort (Tie-Breaking):** In cases where two documents have identical statistical scores, the service applies a deterministic tie-breaker using the `documentId` in ascending order. This ensures consistent results across multiple API calls.
-
-### 4. Complexity Analysis (Ranked)
-* **Time Complexity:** $O(Q \times D + D \log K)$, where $Q$ is query length, $D$ is the number of candidate documents, and $K$ is the requested result count.
-* **Space Complexity:** $O(K)$ additional space for the priority queue.
+- **Map Aggregation:** A local `HashMap<Integer, Integer>` is initialized per request to track the occurrence count for each `documentId` across posting lists.
+- **Counting:** Utilizes `Map.merge()` for efficient count increments.
+- **Thread Context:** Because the map is local to the `search` method and not shared across threads, standard `HashMap` performance is optimized without requiring concurrent synchronization overhead.
+- **Filtering:** Documents failing the threshold check are pruned before the scoring phase begins.
 
 ---
 
-## 6. Future Improvements
-The current design is built to be extensible for the following features:
-- **OR Search:** Implementing "Union" logic to broaden result sets.
-- **Threshold Matching:** Implementing "Match $X\%$" logic (e.g., return documents that match 3 out of 4 words).
-- **Fuzzy Search:** Integrating the `Trie` to suggest or match similar terms when a direct match isn't found.
+## 5. Strategy Pattern & Complexity Analysis
+The `SearchService` acts as an orchestrator for pluggable ranking algorithms.
+
+* **Strategy Pattern:** The service depends on the `Scorer` interface, allowing runtime switching between **BM25 (Phase 4)** and **TF-IDF (Phase 2)**.
+* **Top-K Optimization:** Utilizes a `PriorityQueue` (Min-Heap) to maintain the highest-scoring $K$ results.
+
+### Performance Profile:
+| Operation               | Complexity      | Description                                                           |
+|:------------------------|:----------------|:----------------------------------------------------------------------|
+| **Tokenization**        | $O(L)$          | $L$ is the length of the raw query string.                            |
+| **Candidate Discovery** | $O(Q \times D)$ | $Q$ is query tokens; $D$ is the average number of postings per token. |
+| **Top-K Ranking**       | $O(D \log K)$   | $D$ is the number of candidates; $K$ is the requested result size.    |
+
+---
+
+## 6. System Extensions by Phase
+
+### Phase 3: REST API & Web Layer
+* **Spring Boot Integration:** Wrapped the search logic in a web service, introducing `SearchController` for HTTP communication.
+* **Parameter Mapping:** Added support for mapping query strings and numeric parameters from URL requests to service methods.
+
+### Phase 4: Advanced Ranking & Retrieval
+* **BM25 Scorer:** Implemented industry-standard probabilistic ranking with term saturation and document length normalization.
+* **Tie-Breaking Logic:** Descending score as primary sort; ascending `documentId` as secondary sort for deterministic API results.
+
+---
+
+## 7. Future Improvements
+- **OR Search:** Implementing full union logic for broader result sets.
+- **WAND (Weak AND) Algorithm:** Optimization to skip scoring documents that cannot mathematically enter the Top-K results.
+- **Fuzzy Search:** Integrating the `Trie` to match similar terms via Levenshtein distance.

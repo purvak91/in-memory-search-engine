@@ -38,12 +38,12 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnResultsInDescendingOrderOfScore() {
-        var results = searchService.rankedSearch("java programming", 3);
+        var results = searchService.rankedSearch("java programming", 3, 1.0);
         List<Integer> docResult = results.stream().map(SearchResult::documentId).toList();
         List<Integer> expectedResult = new ArrayList<>(List.of(1, 3));
         assertEquals(expectedResult, docResult);
 
-        var results2 = searchService.rankedSearch("python programming", 3);
+        var results2 = searchService.rankedSearch("python programming", 3, 1.0);
         List<Integer> docResult2 = results2.stream().map(SearchResult::documentId).toList();
         List<Integer> expectedResult2 = new ArrayList<>(List.of(3, 2));
         assertEquals(expectedResult2, docResult2);
@@ -51,7 +51,7 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnResultsWithSameScoreInAscendingOrderOfDocId() {
-        var results = searchService.rankedSearch("programming", 3);
+        var results = searchService.rankedSearch("programming", 3, 1.0);
         List<Integer> docResult = results.stream().map(SearchResult::documentId).toList();
         List<Integer> expectedResult = new ArrayList<>(List.of(1, 3, 2));
         assertEquals(expectedResult, docResult);
@@ -59,7 +59,7 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnAllResultsIfTopKIsGreaterThanAvailableResults() {
-        var results = searchService.rankedSearch("programming", 5);
+        var results = searchService.rankedSearch("programming", 5, 1.0);
         List<Integer> docResult = results.stream().map(SearchResult::documentId).toList();
         List<Integer> expectedResult = new ArrayList<>(List.of(1, 3, 2));
         assertEquals(expectedResult, docResult);
@@ -67,7 +67,7 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnTopKResults() {
-        var results = searchService.rankedSearch("programming", 2);
+        var results = searchService.rankedSearch("programming", 2, 1.0);
         List<Integer> docResult = results.stream().map(SearchResult::documentId).toList();
         List<Integer> expectedResult = new ArrayList<>(List.of(1, 3));
         assertEquals(expectedResult, docResult);
@@ -75,7 +75,7 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnEmptyListForNoMatchingDocuments() {
-        var results = searchService.rankedSearch("ruby programming", 3);
+        var results = searchService.rankedSearch("ruby programming", 3, 1.0);
         assertTrue(results.isEmpty());
     }
 
@@ -83,7 +83,7 @@ class TfIdfRankedSearchServiceTest {
     void shouldThrowExceptionForInvalidTopK() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> searchService.rankedSearch("java", -1),
+                () -> searchService.rankedSearch("java", -1, 1.0),
                 "Should throw when topK is negative"
         );
 
@@ -91,7 +91,7 @@ class TfIdfRankedSearchServiceTest {
 
         exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> searchService.rankedSearch("java", 0),
+                () -> searchService.rankedSearch("java", 0, 1.0),
                 "Should throw when topK is zero"
         );
 
@@ -100,11 +100,19 @@ class TfIdfRankedSearchServiceTest {
 
     @Test
     void shouldReturnEmptyListForEmptyOrNullQuery() {
-        var results = searchService.rankedSearch("", 3);
+        var results = searchService.rankedSearch("", 3, 1.0);
         assertTrue(results.isEmpty());
 
-        results = searchService.rankedSearch(null, 3);
+        results = searchService.rankedSearch(null, 3, 1.0);
         assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void shouldFilterResultsStrictlyWhenThresholdIsHigh() {
+        var results = searchService.rankedSearch("java python backend", 5, 0.7);
+
+        assertEquals(1, results.size());
+        assertEquals(3, results.get(0).documentId());
     }
 
 }

@@ -16,12 +16,14 @@ The system exposes two primary endpoints to interact with the in-memory index.
 
 ### 2. SearchController
 * **Endpoint**: `GET /api/search`
-* **Parameters**:
-    * `query` (Required): The search term.
-    * `topK` (Optional): The number of results for ranked search.
-* **Logic**: Dynamically switches between standard Boolean search (if `topK` is absent) and **Advanced Ranked Search** (if `topK` is present).
-* **Scoring Strategy**: By default, the system utilizes the `Bm25Scorer` for ranking, providing industry-standard relevance through term saturation and length normalization.
-* **Validation**: Ensures `query` is not empty or whitespace and that `topK` is greater than 0 if provided.
+* **Query Parameters**:
+    * `query` (Required): The search string.
+    * `topK` (Optional): Enables ranked search if provided; determines result limit.
+    * `threshold` (Optional): A double in the range $(0, 1]$ defining the strictness of the match. Defaults to $0.8$ 
+* **Logic**: Dynamically switches between standard Boolean search (if `topK` is absent) and **Advanced Ranked Search** (if `topK` is present).* **Scoring Strategy**: By default, the system utilizes the `Bm25Scorer` for ranking, providing industry-standard relevance through term saturation and length normalization.
+* **Validation**:
+    * Ensures `query` is non-blank.
+    * Validates `threshold` is within mathematically stable bounds $(0, 1]$. An invalid threshold triggers a `400 Bad Request` via the `GlobalExceptionHandler`.
 
 ---
 
